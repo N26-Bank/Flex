@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Mobile Banking</title>
+<title>N26 Local Demo Bank</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif}
 body{background:#f5f6fa;color:#111;overflow-x:hidden}
@@ -26,9 +26,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px}
 table, th, td{border:1px solid #ccc}
 th,td{padding:10px;text-align:center}
 th{background:#0052cc;color:#fff}
-.approved{color:blue;font-weight:bold}
+.approved{color:green;font-weight:bold}
 .rejected{color:red;font-weight:bold}
-.pending{color:green;font-weight:bold}
+.pending{color:orange;font-weight:bold}
 @media(max-width:768px){.header{border-radius:0} .sidebar{width:200px}}
 </style>
 </head>
@@ -93,6 +93,7 @@ th{background:#0052cc;color:#fff}
         <h3>KYC Verification</h3>
         <input id="kycName" placeholder="Full Name" readonly>
         <input id="kycAccount" placeholder="Account Number" readonly>
+        <input id="kycAddress" placeholder="Address" readonly>
         <input type="file" id="kycPhoto" readonly>
         <button id="kycSubmitBtn" onclick="submitKYC()">Submit KYC</button>
       </div>
@@ -142,7 +143,7 @@ th{background:#0052cc;color:#fff}
 // INITIALIZE USERS & TRANSACTIONS
 let users = JSON.parse(localStorage.getItem("users") || '{}');
 if(!users.admin){
-  users.admin = {password:"Admin1234!", role:"admin", balance:0, name:"Admin", account:"000001", photo:"", history:[]};
+  users.admin = {password:"Admin1234!", role:"admin", balance:0, name:"Admin", account:"000001", photo:"", address:"", history:[]};
   localStorage.setItem("users", JSON.stringify(users));
 }
 let transactions = JSON.parse(localStorage.getItem("txs") || '[]');
@@ -208,27 +209,30 @@ function prepareKYC(){
   const u = users[currentUser];
   const kName = document.getElementById("kycName");
   const kAcc = document.getElementById("kycAccount");
+  const kAddr = document.getElementById("kycAddress");
   const kPhoto = document.getElementById("kycPhoto");
   const btn = document.getElementById("kycSubmitBtn");
-  if(u.name && u.account && u.photo){
-    kName.value = u.name; kAcc.value = u.account; btn.style.display="none"; kPhoto.style.display="none";
+  if(u.name && u.account && u.photo && u.address){
+    kName.value = u.name; kAcc.value = u.account; kAddr.value = u.address; btn.style.display="none"; kPhoto.style.display="none"; kAddr.setAttribute("readonly","readonly");
   } else {
-    kName.removeAttribute("readonly"); kAcc.removeAttribute("readonly"); kPhoto.removeAttribute("readonly"); btn.style.display="block"; kPhoto.style.display="block";
+    kName.removeAttribute("readonly"); kAcc.removeAttribute("readonly"); kAddr.removeAttribute("readonly"); kPhoto.removeAttribute("readonly"); btn.style.display="block"; kPhoto.style.display="block";
   }
 }
 function submitKYC(){
   const name = document.getElementById("kycName").value.trim();
   const account = document.getElementById("kycAccount").value.trim();
+  const address = document.getElementById("kycAddress").value.trim();
   const file = document.getElementById("kycPhoto").files[0];
-  if(!name||!account){alert("Enter name and account number"); return;}
+  if(!name||!account||!address){alert("Enter all KYC details"); return;}
   if(file){
     const reader = new FileReader();
     reader.onload = function(e){
       users[currentUser].photo = e.target.result;
       users[currentUser].name = name;
       users[currentUser].account = account;
+      users[currentUser].address = address;
       saveUsers();
-      alert("KYC saved!");
+      alert("KYC saved successfully!");
       prepareKYC(); showPage("dashboard");
     }
     reader.readAsDataURL(file);
@@ -247,19 +251,19 @@ function requestTransaction(){
   saveUsers();
   localStorage.setItem("txs",JSON.stringify(transactions));
   document.getElementById("amt").value="";
-  alert("Transaction recorded.");
+  alert("Transaction recorded and pending approval.");
 }
 
-// LOAD USER HISTORY WITH PENDING GREEN
+// LOAD USER HISTORY
 function loadTransactions(){
   const txs = users[currentUser].history || [];
   document.getElementById("txList").innerHTML = txs.map(t=>{
     let statusClass = t.status==="pending"?"pending":t.status==="approved"?"approved":"rejected";
-    return `${t.type}: $${t.amount} <span class="${statusClass}">${t.status==="pending"?"Pending (Contact Support)":t.status==="approved"?"Approved":"Rejected"}</span><br><span class="small">${t.date}</span>`;
+    return `${t.type}: $${t.amount} <span class="${statusClass}">${t.status==="pending"?"Pending (Contact Support)":t.status==="approved"?"Successful":"Rejected"}</span><br><span class="small">${t.date}</span>`;
   }).join("<hr>");
 }
 
-// ADMIN PANEL LOGIN PROMPT
+// ADMIN PANEL LOGIN
 function adminLoginPrompt(){
   const uname = prompt("Admin Username:");
   const pwd = prompt("Admin Password:");
@@ -275,8 +279,9 @@ function createUser(){
   const p = document.getElementById("newPass").value.trim();
   if(!u||!p){alert("Enter username and password"); return;}
   if(users[u]){alert("User exists"); return;}
-  users[u]={password:p,role:"user",balance:0,name:u,account:"",photo:"",history:[]};
+  users[u]={password:p,role:"user",balance:0,name:"",account:"",photo:"",address:"",history:[]};
   saveUsers(); loadAdminPanel();
+  alert("User created successfully!");
 }
 
 function fundUserBalance(){
@@ -284,7 +289,13 @@ function fundUserBalance(){
   const amt = parseFloat(document.getElementById("fundAmt").value);
   if(!users[u] || isNaN(amt) || amt<=0){alert("Invalid user or amount"); return;}
   users[u].balance += amt;
+  // Record deposit in user history
+  const txObj = {user:u,type:"Deposit",amount:amt,status:"approved",date:new Date().toLocaleString()};
+  users[u].history.push(txObj);
   saveUsers();
+  loadAdminPanel();
+  if(currentUser===u) loadTransactions();
+  alert("User funded successfully!");
 }
 
 // LOAD ADMIN PANEL TABLE
@@ -294,7 +305,7 @@ function loadAdminPanel(){
   Object.keys(users).forEach(u=>{
     if(u==="admin") return;
     const user = users[u];
-    const txsHtml = user.history.map((t,i)=>`${t.type}: $${t.amount} <span class="${t.status==='pending'?'pending':t.status==='approved'?'approved':'rejected'}">${t.status==='pending'?'Pending':t.status}</span>`).join("<br>");
+    const txsHtml = user.history.map((t,i)=>`${t.type}: $${t.amount} <span class="${t.status==='pending'?'pending':t.status==='approved'?'approved':'rejected'}">${t.status==='pending'?'Pending':t.status==='approved'?'Successful':'Rejected'}</span>`).join("<br>");
     const actionBtns = user.history.map((t,i)=>{
       if(t.status==="pending"){
         return `<button onclick="adminApprove('${u}',${i})">✅</button> <button onclick="adminReject('${u}',${i})">❌</button>`;
@@ -328,4 +339,4 @@ if(currentUser){document.getElementById("loginPage").style.display="none"; initB
 </script>
 
 </body>
-</html>
+  </html>
