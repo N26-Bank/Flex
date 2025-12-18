@@ -1,9 +1,4 @@
-import { onAuthStateChanged, signOut }
-from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-import { doc, getDoc }
-from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import { auth, db } from "./firebase.js";
 
 onAuthStateChanged(auth, async user => {
@@ -14,12 +9,18 @@ onAuthStateChanged(auth, async user => {
 
   if (data.status === "suspended") {
     alert("Account suspended");
-    signOut(auth);
+    auth.signOut();
+    return;
   }
 
-  name.innerText = data.fullName;
-  balance.innerText = data.balance;
-  kyc.innerText = data.kycStatus;
-});
+  document.getElementById("name").innerText = data.fullName;
+  document.getElementById("balance").innerText = data.balance;
+  document.getElementById("kyc").innerText = data.kycStatus;
 
-window.logout = () => signOut(auth);
+  if (data.profilePhoto) {
+    const img = document.createElement("img");
+    img.src = data.profilePhoto;
+    img.width = 100;
+    document.body.appendChild(img);
+  }
+});
