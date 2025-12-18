@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Local Demo Bank - Pending Contact Support</title>
+<title>N26 Local Demo Bank</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif}
 body{background:#f5f6fa;color:#111;overflow-x:hidden}
@@ -21,6 +21,7 @@ input,select,textarea{width:100%;padding:12px;margin:10px 0;border-radius:12px;b
 .profile-img{width:100px;height:100px;border-radius:50%;object-fit:cover;margin-bottom:10px;border:3px solid #0052cc}
 .small{font-size:13px;color:#666}
 h2,h3,h4{margin-bottom:10px;font-weight:600}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:none;z-index:50;}
 @media(max-width:768px){.header{border-radius:0} .sidebar{width:200px}}
 </style>
 </head>
@@ -36,6 +37,9 @@ h2,h3,h4{margin-bottom:10px;font-weight:600}
     <p id="loginMsg" style="color:red;margin-top:10px"></p>
   </div>
 </div>
+
+<!-- Overlay for mobile -->
+<div id="overlay" onclick="toggleSidebar()"></div>
 
 <!-- BANK APP -->
 <div id="bankApp" class="hidden">
@@ -104,7 +108,7 @@ h2,h3,h4{margin-bottom:10px;font-weight:600}
         <button onclick="createUser()">Create User</button>
       </div>
       <div class="card">
-        <h4>All Users</h4>
+        <h4>All Users & Their History</h4>
         <div id="allUsers"></div>
       </div>
       <div class="card">
@@ -123,16 +127,16 @@ h2,h3,h4{margin-bottom:10px;font-weight:600}
 </div>
 
 <script>
-// Initialize users and transactions
+// INITIALIZE USERS & TRANSACTIONS
 let users = JSON.parse(localStorage.getItem("users") || '{}');
 if(!users.admin){
-  users.admin = {password:"admin123", role:"admin", balance:0, name:"System Admin", account:"000001", photo:""};
+  users.admin = {password:"Admin1234!", role:"admin", balance:0, name:"Admin", account:"000001", photo:"", history:[]};
   localStorage.setItem("users", JSON.stringify(users));
 }
 let transactions = JSON.parse(localStorage.getItem("txs") || '[]');
 let currentUser = localStorage.getItem("currentUser") || null;
 
-// LOGIN FUNCTION
+// LOGIN
 function login(){
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value.trim();
@@ -157,13 +161,20 @@ function initBankApp(){
 }
 
 // SIDEBAR
-function toggleSidebar(){document.getElementById("sidebar").classList.toggle("show");}
+function toggleSidebar(){
+  const sb = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+  sb.classList.toggle("show");
+  overlay.style.display = sb.classList.contains("show") ? "block" : "none";
+}
 
-// NAVIGATE PAGES
+// NAVIGATION
 function showPage(p){
   document.querySelectorAll(".page").forEach(d=>d.classList.add("hidden"));
   document.getElementById(p).classList.remove("hidden");
+  // AUTO COLLAPSE SIDEBAR & HIDE OVERLAY
   document.getElementById("sidebar").classList.remove("show");
+  document.getElementById("overlay").style.display = "none";
   if(p==="dashboard") updateDashboard();
   if(p==="history") loadTransactions();
   if(p==="admin") loadAdminPanel();
@@ -218,34 +229,36 @@ function requestTransaction(){
   const amt = parseFloat(document.getElementById("amt").value);
   const type = document.getElementById("txnType").value;
   if(isNaN(amt)||amt<=0){alert("Enter valid amount"); return;}
-  transactions.push({user:currentUser,type,amount:amt,status:"pending",date:new Date().toLocaleString()});
-  localStorage.setItem("txs",JSON.stringify(transactions));
+  const txObj = {user:currentUser,type,amount:amt,status:"pending",date:new Date().toLocaleString()};
+  transactions.push(txObj);
   if(!users[currentUser].history) users[currentUser].history=[];
-  users[currentUser].history.push({type,amount,date:new Date().toLocaleString()});
+  users[currentUser].history.push({...txObj}); // record in user history
   saveUsers();
+  localStorage.setItem("txs",JSON.stringify(transactions));
   document.getElementById("amt").value="";
   alert("Transaction recorded.");
 }
 
-// USER TRANSACTION HISTORY WITH GREEN PENDING
+// LOAD USER HISTORY WITH PENDING GREEN
 function loadTransactions(){
   const txs = users[currentUser].history || [];
   document.getElementById("txList").innerHTML = txs.map(t=>{
     let statusText = "";
-    const globalTx = transactions.find(gtx=>gtx.user===currentUser && gtx.type===t.type && gtx.amount===t.amount && gtx.date===t.date);
-    if(globalTx && globalTx.status==="pending"){
-      statusText = `<span style="color:green;font-weight:bold">Pending (Contact Support)</span>`;
-    }
+    if(t.status==="pending") statusText = `<span style="color:green;font-weight:bold">Pending (Contact Support)</span>`;
+    else if(t.status==="approved") statusText = `<span style="color:blue;font-weight:bold">Approved</span>`;
+    else if(t.status==="rejected") statusText = `<span style="color:red;font-weight:bold">Rejected</span>`;
     return `${t.type}: $${t.amount} ${statusText}<br><span class="small">${t.date}</span>`;
   }).join("<hr>");
 }
 
 // ADMIN PANEL LOGIN PROMPT
 function adminLoginPrompt(){
-  if(users[currentUser].role==="admin"){showPage("admin"); return;}
-  const pwd = prompt("Enter Admin Password:");
-  if(pwd === users.admin.password){users[currentUser].role="admin"; saveUsers(); showPage("admin");}
-  else alert("Wrong admin password");
+  const uname = prompt("Admin Username:");
+  const pwd = prompt("Admin Password:");
+  if(uname==="admin" && pwd==="Admin1234!"){
+    users[currentUser].role="admin";
+    saveUsers(); showPage("admin");
+  } else alert("Wrong admin credentials!");
 }
 
 // ADMIN FUNCTIONS
@@ -257,6 +270,7 @@ function createUser(){
   users[u]={password:p,role:"user",balance:0,name:u,account:"",photo:"",history:[]};
   saveUsers(); loadAdminPanel();
 }
+
 function fundUserBalance(){
   const u = document.getElementById("fundUser").value.trim();
   const amt = parseFloat(document.getElementById("fundAmt").value);
@@ -265,10 +279,14 @@ function fundUserBalance(){
   saveUsers();
   alert("Balance funded!");
 }
+
 function loadAdminPanel(){
   document.getElementById("allUsers").innerHTML = Object.keys(users).filter(u=>u!=="admin").map(u=>{
     const user = users[u];
-    const txs = user.history.map(t=>`${t.type} $${t.amount} (${t.date})`).join("<br>");
+    const txs = user.history.map(t=>{
+      let st = t.status==="pending" ? "Pending" : t.status==="approved" ? "Approved" : "Rejected";
+      return `${t.type} $${t.amount} (${st})`;
+    }).join("<br>");
     return `<strong>${u}</strong> - P:${user.password} - $${user.balance}<br>Transactions:<br>${txs}<hr>`;
   }).join("");
   const pending = transactions.filter(t=>t.status==="pending");
@@ -276,19 +294,30 @@ function loadAdminPanel(){
     `${t.user} - ${t.type} $${t.amount} <button onclick="approveTx(${i})">✅</button> <button onclick="rejectTx(${i})">❌</button>`
   ).join("<br>");
 }
+
 function approveTx(index){
   const t = transactions[index];
   if(t.type==="Withdraw" && users[t.user].balance<t.amount){alert("Insufficient balance!"); return;}
   if(t.type==="Withdraw") users[t.user].balance -= t.amount;
   else users[t.user].balance += t.amount;
-  t.status="approved"; saveUsers(); localStorage.setItem("txs",JSON.stringify(transactions)); loadAdminPanel();
+  t.status="approved";
+  const userTx = users[t.user].history.find(ht=>ht.date===t.date && ht.amount===t.amount && ht.type===t.type);
+  if(userTx) userTx.status="approved";
+  saveUsers(); localStorage.setItem("txs",JSON.stringify(transactions)); loadAdminPanel();
 }
-function rejectTx(index){transactions[index].status="rejected"; localStorage.setItem("txs",JSON.stringify(transactions)); loadAdminPanel();}
+
+function rejectTx(index){
+  const t = transactions[index];
+  t.status="rejected";
+  const userTx = users[t.user].history.find(ht=>ht.date===t.date && ht.amount===t.amount && ht.type===t.type);
+  if(userTx) userTx.status="rejected";
+  saveUsers(); localStorage.setItem("txs",JSON.stringify(transactions)); loadAdminPanel();
+}
 
 // SAVE USERS
 function saveUsers(){localStorage.setItem("users",JSON.stringify(users)); updateDashboard();}
 
-// AUTO LOGIN IF SESSION EXISTS
+// AUTO LOGIN
 if(currentUser){document.getElementById("loginPage").style.display="none"; initBankApp();}
 </script>
 
