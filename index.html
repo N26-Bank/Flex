@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Mobile Banking</title>
+<title>N26 Local Demo Bank</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif}
 body{background:#f5f6fa;color:#111;overflow-x:hidden}
@@ -83,7 +83,7 @@ th{background:#0052cc;color:#fff}
         <input id="amt" type="number" placeholder="Amount">
         <select id="txnType"><option value="Deposit">Deposit</option><option value="Withdraw">Withdraw</option></select>
         <button onclick="requestTransaction()">Place Transaction</button>
-        <p class="small">Transactions are recorded immediately in your history.</p>
+        <p class="small">Transactions are recorded immediately in your history and pending admin approval if Withdraw.</p>
       </div>
     </div>
 
@@ -146,7 +146,6 @@ if(!users.admin){
   users.admin = {password:"Admin1234!", role:"admin", balance:0, name:"Admin", account:"000001", photo:"", address:"", history:[]};
   localStorage.setItem("users", JSON.stringify(users));
 }
-let transactions = JSON.parse(localStorage.getItem("txs") || '[]');
 let currentUser = localStorage.getItem("currentUser") || null;
 
 // LOGIN
@@ -171,6 +170,9 @@ function initBankApp(){
   showPage("dashboard");
   updateDashboard();
   prepareKYC();
+  if(users[currentUser].role==="admin"){
+    setInterval(loadAdminPanel,3000); // refresh admin panel every 3s
+  }
 }
 
 // SIDEBAR
@@ -244,14 +246,12 @@ function requestTransaction(){
   const amt = parseFloat(document.getElementById("amt").value);
   const type = document.getElementById("txnType").value;
   if(isNaN(amt)||amt<=0){alert("Enter valid amount"); return;}
-  const txObj = {user:currentUser,type,amount:amt,status:"pending",date:new Date().toLocaleString()};
-  transactions.push(txObj);
-  if(!users[currentUser].history) users[currentUser].history=[];
+  const txObj = {user:currentUser,type,amount:amt,status:type==="Deposit"?"approved":"pending",date:new Date().toLocaleString()};
   users[currentUser].history.push({...txObj});
+  if(type==="Deposit") users[currentUser].balance += amt;
   saveUsers();
-  localStorage.setItem("txs",JSON.stringify(transactions));
   document.getElementById("amt").value="";
-  alert("Transaction recorded and pending approval.");
+  alert(type==="Deposit"?"Deposit Successful":"Transaction placed and pending admin approval.");
 }
 
 // LOAD USER HISTORY
@@ -292,8 +292,7 @@ function fundUserBalance(){
   // Record deposit in user history
   const txObj = {user:u,type:"Deposit",amount:amt,status:"approved",date:new Date().toLocaleString()};
   users[u].history.push(txObj);
-  saveUsers();
-  loadAdminPanel();
+  saveUsers(); loadAdminPanel();
   if(currentUser===u) loadTransactions();
   alert("User funded successfully!");
 }
@@ -305,11 +304,13 @@ function loadAdminPanel(){
   Object.keys(users).forEach(u=>{
     if(u==="admin") return;
     const user = users[u];
-    const txsHtml = user.history.map((t,i)=>`${t.type}: $${t.amount} <span class="${t.status==='pending'?'pending':t.status==='approved'?'approved':'rejected'}">${t.status==='pending'?'Pending':t.status==='approved'?'Successful':'Rejected'}</span>`).join("<br>");
+    const txsHtml = user.history.map((t,i)=>{
+      let statusClass = t.status === 'pending' ? 'pending' : t.status === 'approved' ? 'approved' : 'rejected';
+      return `${t.type}: $${t.amount} <span class="${statusClass}">${t.status==='pending'?'Pending':t.status==='approved'?'Successful':'Rejected'}</span>`;
+    }).join("<br>");
     const actionBtns = user.history.map((t,i)=>{
-      if(t.status==="pending"){
-        return `<button onclick="adminApprove('${u}',${i})">✅</button> <button onclick="adminReject('${u}',${i})">❌</button>`;
-      } else return "";
+      if(t.status==="pending") return `<button onclick="adminApprove('${u}',${i})">✅</button> <button onclick="adminReject('${u}',${i})">❌</button>`;
+      else return "";
     }).join(" ");
     const tr = document.createElement("tr");
     tr.innerHTML=`<td>${u}</td><td>${user.password}</td><td>${user.balance.toFixed(2)}</td><td>${txsHtml}</td><td>${actionBtns}</td>`;
@@ -317,6 +318,7 @@ function loadAdminPanel(){
   });
 }
 
+// ADMIN APPROVE/REJECT
 function adminApprove(user,idx){
   const t = users[user].history[idx];
   if(t.type==="Withdraw" && users[user].balance<t.amount){alert("Insufficient balance"); return;}
@@ -325,7 +327,6 @@ function adminApprove(user,idx){
   t.status="approved";
   saveUsers(); loadAdminPanel(); if(currentUser===user) loadTransactions(); updateDashboard();
 }
-
 function adminReject(user,idx){
   users[user].history[idx].status="rejected";
   saveUsers(); loadAdminPanel(); if(currentUser===user) loadTransactions(); updateDashboard();
