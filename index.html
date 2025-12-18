@@ -3,226 +3,253 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Demo Bank</title>
-
+<title>N26 Local Demo Bank</title>
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#f4f6fb;
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f4f6fb;color:#111}
 .hidden{display:none}
-.card{
-  background:#fff;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:15px;
-  box-shadow:0 4px 15px rgba(0,0,0,.1)
-}
-button{
-  background:#0052cc;
-  color:#fff;
-  border:none;
-  padding:10px 15px;
-  border-radius:8px;
-  cursor:pointer;
-  width:100%
-}
-input,select{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  border-radius:8px;
-  border:1px solid #ccc
-}
-.sidebar{
-  position:fixed;
-  top:0;left:0;
-  width:220px;
-  height:100%;
-  background:#002d72;
-  color:#fff;
-  padding:15px;
-  transform:translateX(-100%);
-  transition:.3s
-}
-.sidebar.show{transform:translateX(0)}
-.sidebar a{
-  display:block;
-  color:#fff;
-  padding:10px;
-  text-decoration:none
-}
-.header{
-  background:#002d72;
-  color:#fff;
-  padding:12px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center
-}
-.content{
-  padding:15px
-}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:16px;box-shadow:0 8px 25px rgba(0,0,0,.1)}
+button{background:#0052cc;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;width:100%}
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
+.sidebar{position:fixed;top:0;left:-220px;width:220px;height:100%;background:#002d72;color:#fff;padding:15px;transition:.3s;z-index:100;}
+.sidebar.show{left:0}
+.sidebar a{display:block;color:#fff;padding:10px;text-decoration:none;cursor:pointer}
+.header{background:#002d72;color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.content{padding:15px;margin-left:0;}
+.profile-img{width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:10px}
 .small{font-size:13px;color:#666}
 </style>
 </head>
-
 <body>
 
-<!-- LOGIN -->
-<div id="login" class="content">
-  <div class="card">
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="card" style="max-width:360px;margin:100px auto;text-align:center;">
     <h2>🔐 Login</h2>
-    <input id="luser" placeholder="Username">
-    <input id="lpass" type="password" placeholder="Password">
+    <input id="loginUser" placeholder="Username">
+    <input id="loginPass" type="password" placeholder="Password">
     <button onclick="login()">Login</button>
+    <p id="loginMsg" style="color:red;margin-top:10px"></p>
   </div>
 </div>
 
-<!-- SIDEBAR -->
-<div id="sidebar" class="sidebar">
-  <a onclick="showPage('dashboard')">Dashboard</a>
-  <a onclick="showPage('kyc')">KYC</a>
-  <a onclick="showPage('history')">History</a>
-  <a id="adminLink" onclick="showPage('admin')">Admin Panel</a>
-  <a onclick="logout()">Logout</a>
-</div>
+<!-- BANK APP -->
+<div id="bankApp" class="hidden">
 
-<!-- HEADER -->
-<div id="header" class="header hidden">
-  <span onclick="toggle()">☰</span>
-  <span id="who"></span>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="content hidden">
-  <div class="card">
-    <h3>Balance</h3>
-    <h1 id="balance">$0.00</h1>
+  <!-- Header -->
+  <div id="header" class="header">
+    <span onclick="toggleSidebar()" style="cursor:pointer;font-size:22px;">☰</span>
+    <span id="welcomeUser"></span>
   </div>
 
-  <div class="card">
-    <h3>Deposit / Withdraw</h3>
-    <input id="amt" type="number" placeholder="Amount">
-    <button onclick="deposit()">Deposit</button><br><br>
-    <button onclick="withdraw()">Withdraw</button>
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <h3>N26 Bank</h3>
+    <a onclick="showPage('dashboard')">Dashboard</a>
+    <a onclick="showPage('kyc')">KYC</a>
+    <a onclick="showPage('history')">Transaction History</a>
+    <a id="adminLink" onclick="showPage('admin')">Admin Panel</a>
+    <a onclick="logout()">Logout</a>
   </div>
-</div>
 
-<!-- KYC -->
-<div id="kyc" class="content hidden">
-  <div class="card">
-    <h3>KYC Verification</h3>
-    <input id="fname" placeholder="Full Name">
-    <input type="file" id="passport">
-    <button onclick="saveKYC()">Submit</button>
-  </div>
-</div>
+  <!-- Pages -->
+  <div id="pagesContainer">
 
-<!-- HISTORY -->
-<div id="history" class="content hidden">
-  <div class="card">
-    <h3>Transactions</h3>
-    <div id="txs"></div>
-  </div>
-</div>
+    <!-- Dashboard -->
+    <div id="dashboard" class="page hidden">
+      <div class="card" style="text-align:center;">
+        <img id="profilePic" src="" class="profile-img" alt="Profile">
+        <h3 id="userName"></h3>
+        <p>Account #: <span id="accountNumber"></span></p>
+        <h2>Balance: $<span id="balance"></span></h2>
+      </div>
+      <div class="card">
+        <h3>Deposit / Withdraw</h3>
+        <input id="amt" type="number" placeholder="Amount">
+        <button onclick="deposit()">Deposit</button><br><br>
+        <button onclick="withdraw()">Withdraw</button>
+      </div>
+    </div>
 
-<!-- ADMIN -->
-<div id="admin" class="content hidden">
-  <div class="card">
-    <h3>Create User</h3>
-    <input id="nu" placeholder="Username">
-    <input id="np" placeholder="Password">
-    <button onclick="createUser()">Create</button>
-  </div>
-  <div class="card">
-    <h3>All Users</h3>
-    <div id="users"></div>
+    <!-- KYC -->
+    <div id="kyc" class="page hidden">
+      <div class="card">
+        <h3>KYC Verification</h3>
+        <input id="kycName" placeholder="Full Name">
+        <input id="kycAccount" placeholder="Account Number">
+        <input type="file" id="kycPhoto">
+        <button onclick="submitKYC()">Submit KYC</button>
+      </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div id="history" class="page hidden">
+      <div class="card">
+        <h3>Transaction History</h3>
+        <div id="txList"></div>
+      </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin" class="page hidden">
+      <div class="card">
+        <h3>Admin Panel - Create Users</h3>
+        <input id="newUser" placeholder="Username">
+        <input id="newPass" placeholder="Password">
+        <button onclick="createUser()">Create User</button>
+      </div>
+      <div class="card">
+        <h4>All Users:</h4>
+        <div id="allUsers"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
-let users=JSON.parse(localStorage.users||'{}');
+// Initialize users
+let users = JSON.parse(localStorage.getItem("users") || '{}');
 if(!users.admin){
- users.admin={password:'admin123',role:'admin',balance:0};
- localStorage.users=JSON.stringify(users)
+  users.admin = {password:"admin123", role:"admin", balance:0, name:"System Admin", account:"000001", photo:""};
+  localStorage.setItem("users", JSON.stringify(users));
 }
 
+let currentUser = localStorage.getItem("currentUser") || null;
+
+// LOGIN FUNCTION
 function login(){
- let u=luser.value,p=lpass.value;
- if(users[u] && users[u].password==p){
-  localStorage.currentUser=u;
-  start();
- } else alert("Invalid login");
+  const u = document.getElementById("loginUser").value.trim();
+  const p = document.getElementById("loginPass").value.trim();
+  if(users[u] && users[u].password===p){
+    currentUser = u;
+    localStorage.setItem("currentUser", u);
+    document.getElementById("loginPage").style.display = "none";
+    initBankApp();
+  } else {
+    document.getElementById("loginMsg").innerText = "Invalid username or password!";
+  }
 }
 
-function start(){
- login.classList.add('hidden');
- header.classList.remove('hidden');
- dashboard.classList.remove('hidden');
- who.innerText=localStorage.currentUser;
- if(users[localStorage.currentUser].role!=='admin')
-  adminLink.style.display='none';
- update();
+// INIT BANK APP AFTER LOGIN
+function initBankApp(){
+  document.getElementById("bankApp").classList.remove("hidden");
+  document.getElementById("welcomeUser").innerText = currentUser;
+
+  // Admin panel visibility
+  if(users[currentUser].role!=="admin"){
+    document.getElementById("adminLink").style.display = "none";
+  }
+
+  showPage("dashboard");
+  updateDashboard();
 }
 
-function toggle(){sidebar.classList.toggle('show')}
+// SIDEBAR
+function toggleSidebar(){
+  const s = document.getElementById("sidebar");
+  s.classList.toggle("show");
+}
+
+// NAVIGATE PAGES
 function showPage(p){
- document.querySelectorAll('.content').forEach(d=>d.classList.add('hidden'));
- document.getElementById(p).classList.remove('hidden');
- sidebar.classList.remove('show');
- if(p=='admin')loadUsers();
- if(p=='history')loadTx();
+  document.querySelectorAll(".page").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(p).classList.remove("hidden");
+  document.getElementById("sidebar").classList.remove("show");
+  if(p==="dashboard") updateDashboard();
+  if(p==="history") loadTransactions();
+  if(p==="admin") loadUsers();
 }
 
-function logout(){localStorage.removeItem('currentUser');location.reload()}
+// LOGOUT
+function logout(){
+  localStorage.removeItem("currentUser");
+  location.reload();
+}
 
+// DASHBOARD
+function updateDashboard(){
+  const u = users[currentUser];
+  document.getElementById("userName").innerText = u.name || currentUser;
+  document.getElementById("accountNumber").innerText = u.account || "N/A";
+  document.getElementById("balance").innerText = (u.balance||0).toFixed(2);
+  document.getElementById("profilePic").src = u.photo || "https://via.placeholder.com/80";
+}
+
+// DEPOSIT / WITHDRAW
+function saveTx(type, amount){
+  const txs = JSON.parse(localStorage.getItem("txs")||'[]');
+  txs.push({user:currentUser,type,amount,date:new Date().toLocaleString()});
+  localStorage.setItem("txs", JSON.stringify(txs));
+}
 function deposit(){
- let u=users[localStorage.currentUser];
- u.balance+=Number(amt.value);
- saveTx("Deposit",amt.value);
- save();
+  const amtV = parseFloat(document.getElementById("amt").value);
+  if(isNaN(amtV) || amtV<=0){alert("Enter valid amount"); return;}
+  users[currentUser].balance = (users[currentUser].balance||0)+amtV;
+  saveTx("Deposit",amtV);
+  saveUsers();
 }
-
 function withdraw(){
- let u=users[localStorage.currentUser];
- if(u.balance<amt.value)return alert("Low balance");
- u.balance-=Number(amt.value);
- saveTx("Withdraw",amt.value);
- save();
+  const amtV = parseFloat(document.getElementById("amt").value);
+  if(isNaN(amtV) || amtV<=0){alert("Enter valid amount"); return;}
+  if(users[currentUser].balance<amtV){alert("Insufficient balance"); return;}
+  users[currentUser].balance -= amtV;
+  saveTx("Withdraw",amtV);
+  saveUsers();
 }
 
-function save(){localStorage.users=JSON.stringify(users);update()}
-function update(){balance.innerText="$"+users[localStorage.currentUser].balance}
-
-function saveTx(t,a){
- let tx=JSON.parse(localStorage.tx||'[]');
- tx.push({u:localStorage.currentUser,t,a,d:new Date().toLocaleString()});
- localStorage.tx=JSON.stringify(tx);
+// KYC
+function submitKYC(){
+  const name = document.getElementById("kycName").value.trim();
+  const account = document.getElementById("kycAccount").value.trim();
+  const file = document.getElementById("kycPhoto").files[0];
+  if(!name || !account){alert("Enter name and account number"); return;}
+  if(file){
+    const reader = new FileReader();
+    reader.onload=function(e){
+      users[currentUser].photo = e.target.result;
+      users[currentUser].name = name;
+      users[currentUser].account = account;
+      saveUsers();
+      alert("KYC saved!");
+      showPage("dashboard");
+    }
+    reader.readAsDataURL(file);
+  } else {
+    users[currentUser].name = name;
+    users[currentUser].account = account;
+    saveUsers();
+    alert("KYC saved!");
+    showPage("dashboard");
+  }
 }
 
-function loadTx(){
- let tx=JSON.parse(localStorage.tx||'[]');
- txs.innerHTML=tx.filter(x=>x.u==localStorage.currentUser)
- .map(x=>`<p>${x.t}: $${x.a} <br><span class=small>${x.d}</span></p>`).join('');
+// TRANSACTIONS
+function loadTransactions(){
+  const txs = JSON.parse(localStorage.getItem("txs")||'[]').filter(x=>x.user===currentUser);
+  document.getElementById("txList").innerHTML = txs.map(t=>`${t.type}: $${t.amount}<br><span class="small">${t.date}</span>`).join("<hr>");
 }
 
-function saveKYC(){alert("KYC Saved (Demo)")}
-
+// ADMIN PANEL
 function createUser(){
- users[nu.value]={password:np.value,role:'user',balance:0};
- save();loadUsers();
+  const u = document.getElementById("newUser").value.trim();
+  const p = document.getElementById("newPass").value.trim();
+  if(!u||!p){alert("Enter username and password"); return;}
+  if(users[u]){alert("User exists"); return;}
+  users[u]={password:p,role:"user",balance:0,name:u,account:"",photo:""};
+  saveUsers();
+  loadUsers();
 }
-
 function loadUsers(){
- usersDiv=users;
- users.innerHTML=Object.keys(usersDiv)
- .map(u=>`<p>${u} - $${usersDiv[u].balance}</p>`).join('');
+  document.getElementById("allUsers").innerHTML = Object.keys(users).map(u=>`${u} - ${users[u].role} - $${users[u].balance}`).join("<br>");
 }
 
-if(localStorage.currentUser)start();
+// SAVE USERS
+function saveUsers(){localStorage.setItem("users", JSON.stringify(users)); updateDashboard();}
+
+// AUTO LOGIN IF SESSION EXISTS
+if(currentUser){document.getElementById("loginPage").style.display="none"; initBankApp();}
 </script>
 
 </body>
-  </html>
+</html>
