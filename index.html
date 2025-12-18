@@ -3,390 +3,297 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Bank - Firebase Demo</title>
+<title>N26 Mobile Banking</title>
+
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-/* --- RESET & BASE --- */
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif}
-body{background:#f0f2f5;color:#111;overflow-x:hidden;transition:0.3s}
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:#f2f4f8}
 .hidden{display:none}
-.card{background:#fff;padding:25px;margin-bottom:25px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,.08);transition:0.3s}
-.card:hover{box-shadow:0 15px 35px rgba(0,0,0,.15)}
-button{background:#0052cc;color:#fff;border:none;padding:12px;border-radius:12px;cursor:pointer;width:100%;font-weight:bold;transition:0.3s;font-size:16px}
-button:hover{background:#003c99}
-input,select,textarea{width:100%;padding:12px;margin:10px 0;border-radius:12px;border:1px solid #ccc;font-size:16px;transition:0.2s}
-input:focus, select:focus, textarea:focus{border-color:#0052cc;outline:none}
-.sidebar{position:fixed;top:0;left:-260px;width:260px;height:100%;background:#002d72;color:#fff;padding:25px;transition:.4s;z-index:100;overflow-y:auto;}
-.sidebar.show{left:0}
-.sidebar a{display:flex;align-items:center;color:#fff;padding:15px;margin-bottom:12px;border-radius:15px;text-decoration:none;font-weight:bold;cursor:pointer;transition:0.3s}
-.sidebar a:hover{background:rgba(255,255,255,0.1)}
-.sidebar a span{margin-left:10px}
-.header{background:linear-gradient(90deg,#0052cc,#002d72);color:#fff;padding:18px 25px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;border-bottom-left-radius:20px;border-bottom-right-radius:20px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
-.profile-img{width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:15px;border:4px solid #0052cc;transition:0.3s}
-.profile-img:hover{transform:scale(1.05)}
-.small{font-size:13px;color:#666}
-h2,h3,h4{margin-bottom:12px;font-weight:600}
-#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:none;z-index:50;transition:0.3s}
-table{width:100%;border-collapse:collapse;margin-top:15px;transition:0.3s}
-table, th, td{border:1px solid #ccc}
-th,td{padding:12px;text-align:center}
+
+/* LOGIN */
+#loginBox{
+  max-width:360px;
+  margin:120px auto;
+  background:#fff;
+  padding:30px;
+  border-radius:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,.1);
+}
+input,button{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+button{background:#0052cc;color:#fff;font-weight:bold;border:none}
+button:hover{background:#003d99}
+
+/* HEADER */
+header{
+  background:#0052cc;
+  color:#fff;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+header span{font-size:22px;cursor:pointer}
+
+/* SIDEBAR */
+#sidebar{
+  position:fixed;
+  top:0;left:-240px;
+  width:240px;height:100%;
+  background:#002d72;
+  color:#fff;
+  padding:20px;
+  transition:.3s;
+}
+#sidebar a{
+  display:block;
+  padding:14px;
+  margin-bottom:10px;
+  background:rgba(255,255,255,.1);
+  color:#fff;
+  border-radius:10px;
+  text-decoration:none;
+}
+#sidebar.show{left:0}
+
+/* PAGES */
+.page{padding:20px}
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+  margin-bottom:20px;
+}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#0052cc;color:#fff}
-tr:hover{background:#f1f5f9}
-.approved{color:green;font-weight:bold}
-.rejected{color:red;font-weight:bold}
-.pending{color:orange;font-weight:bold}
-@media(max-width:768px){.header{border-radius:0} .sidebar{width:220px}}
+.green{color:green;font-weight:bold}
+.orange{color:orange;font-weight:bold}
+.red{color:red;font-weight:bold}
+img{width:100px;height:100px;border-radius:50%;object-fit:cover}
 </style>
 </head>
+
 <body>
 
-<!-- LOGIN PAGE -->
-<div id="loginPage">
-  <div class="card" style="max-width:380px;margin:120px auto;text-align:center;">
-    <h2>🔐 Login</h2>
-    <input id="loginUser" placeholder="Username">
-    <input id="loginPass" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <p id="loginMsg" style="color:red;margin-top:10px"></p>
+<!-- LOGIN -->
+<div id="loginBox">
+  <h2 style="text-align:center">🔐 Login</h2>
+  <input id="lUser" placeholder="Username">
+  <input id="lPass" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="loginMsg" style="color:red;text-align:center"></p>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<header>
+  <span onclick="toggleMenu()">☰</span>
+  <b id="welcome"></b>
+</header>
+
+<div id="sidebar">
+  <a onclick="show('dashboard')">Dashboard</a>
+  <a onclick="show('kyc')">KYC</a>
+  <a onclick="show('history')">History</a>
+  <a onclick="adminPrompt()">Admin Panel</a>
+  <a onclick="logout()">Logout</a>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page hidden">
+  <div class="card" style="text-align:center">
+    <img id="photo">
+    <h3 id="name"></h3>
+    <p>Account: <span id="acct"></span></p>
+    <h2>$<span id="bal"></span></h2>
+  </div>
+
+  <div class="card">
+    <input id="amt" type="number" placeholder="Amount">
+    <select id="type">
+      <option>Deposit</option>
+      <option>Withdrawal</option>
+    </select>
+    <button onclick="placeTxn()">Submit</button>
   </div>
 </div>
 
-<!-- Overlay -->
-<div id="overlay" onclick="toggleSidebar()"></div>
-
-<!-- BANK APP -->
-<div id="bankApp" class="hidden">
-
-  <!-- Header -->
-  <div id="header" class="header">
-    <span onclick="toggleSidebar()" style="cursor:pointer;font-size:22px;">☰</span>
-    <span id="welcomeUser" style="font-weight:bold"></span>
-  </div>
-
-  <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
-    <h3 style="margin-bottom:20px;">N26 Bank</h3>
-    <a onclick="showPage('dashboard')">🏦 <span>Dashboard</span></a>
-    <a onclick="showPage('kyc')">🪪 <span>KYC</span></a>
-    <a onclick="showPage('history')">📜 <span>Transaction History</span></a>
-    <a id="adminLink" onclick="adminLoginPrompt()">🛠️ <span>Admin Panel</span></a>
-    <a onclick="logout()">🚪 <span>Logout</span></a>
-  </div>
-
-  <!-- Pages -->
-  <div id="pagesContainer">
-
-    <!-- Dashboard -->
-    <div id="dashboard" class="page hidden">
-      <div class="card" style="text-align:center;">
-        <img id="profilePic" src="" class="profile-img" alt="Profile">
-        <h3 id="userName"></h3>
-        <p>Account #: <span id="accountNumber"></span></p>
-        <h2>Balance: $<span id="balance"></span></h2>
-      </div>
-      <div class="card">
-        <h3>Deposit / Withdraw</h3>
-        <input id="amt" type="number" placeholder="Amount">
-        <select id="txnType"><option value="Deposit">Deposit</option><option value="Withdraw">Withdraw</option></select>
-        <button onclick="requestTransaction()">Place Transaction</button>
-        <p class="small">Transactions are recorded immediately and withdrawals are pending admin approval.</p>
-      </div>
-    </div>
-
-    <!-- KYC -->
-    <div id="kyc" class="page hidden">
-      <div class="card">
-        <h3>KYC Verification</h3>
-        <input id="kycName" placeholder="Full Name">
-        <input id="kycAccount" placeholder="Account Number">
-        <input id="kycAddress" placeholder="Address">
-        <input type="file" id="kycPhoto">
-        <button id="kycSubmitBtn" onclick="submitKYC()">Submit KYC</button>
-      </div>
-    </div>
-
-    <!-- Transaction History -->
-    <div id="history" class="page hidden">
-      <div class="card">
-        <h3>Transaction History</h3>
-        <div id="txList"></div>
-      </div>
-    </div>
-
-    <!-- Admin Panel -->
-    <div id="admin" class="page hidden">
-      <div class="card">
-        <h3>Admin Panel - Manage Users</h3>
-        <input id="newUser" placeholder="Username">
-        <input id="newPass" placeholder="Password">
-        <button onclick="createUser()">Create User</button>
-        <input id="fundUser" placeholder="Username to Fund">
-        <input id="fundAmt" type="number" placeholder="Amount to Add">
-        <button onclick="fundUserBalance()">Fund User</button>
-      </div>
-      <div class="card">
-        <h4>All Users & Pending Transactions</h4>
-        <table id="adminTable">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Password</th>
-              <th>Balance</th>
-              <th>Transactions</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
+<!-- KYC -->
+<div id="kyc" class="page hidden">
+  <div class="card">
+    <input id="kName" placeholder="Full Name">
+    <input id="kAcct" placeholder="Account Number">
+    <input id="kAddr" placeholder="Withdrawal Address">
+    <input type="file" id="kPhoto">
+    <button onclick="saveKYC()">Submit KYC</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, arrayUnion } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<!-- HISTORY -->
+<div id="history" class="page hidden">
+  <div class="card">
+    <div id="txList"></div>
+  </div>
+</div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCpGwKbyOW_LQPrTKoNvDjW_oTD9_cxsnc",
-  authDomain: "n26-bank-888bc.firebaseapp.com",
-  projectId: "n26-bank-888bc",
-  storageBucket: "n26-bank-888bc.firebasestorage.app",
-  messagingSenderId: "112126821080",
-  appId: "1:112126821080:web:c108cc61d84a25f5290dad"
-};
+<!-- ADMIN -->
+<div id="admin" class="page hidden">
+  <div class="card">
+    <h3>Create User</h3>
+    <input id="cu" placeholder="Username">
+    <input id="cp" placeholder="Password">
+    <button onclick="createUser()">Create</button>
+  </div>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-let currentUser = null;
+  <div class="card">
+    <h3>Fund User</h3>
+    <input id="fu" placeholder="Username">
+    <input id="fa" type="number" placeholder="Amount">
+    <button onclick="fundUser()">Fund</button>
+  </div>
 
-// Initialize Admin
-async function initAdmin(){
-  const adminRef = doc(db,"users","admin");
-  const adminSnap = await getDoc(adminRef);
-  if(!adminSnap.exists()){
-    await setDoc(adminRef,{
-      password:"Admin1234!",
-      role:"admin",
-      balance:0,
-      name:"Admin",
-      account:"000001",
-      photo:"",
-      address:"",
-      history:[]
-    });
-  }
-}
-initAdmin();
+  <div class="card">
+    <h3>All Users & Transactions</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>User</th><th>Password</th><th>Balance</th><th>Transactions</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="adminTable"></tbody>
+    </table>
+  </div>
+</div>
 
-// --------- LOGIN WITH CACHE ---------
-async function login() {
-  const loginMsg = document.getElementById("loginMsg");
-  loginMsg.style.color = "black";
-  loginMsg.innerText = "Logging in...";
+</div>
 
-  const username = document.getElementById("loginUser").value.trim();
-  const password = document.getElementById("loginPass").value.trim();
+<script>
+/* SUPABASE CONFIG */
+const supabase = supabase.createClient(
+  "https://mvgwrkpqauzntjtxhtdd.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Z3dya3BxYXV6bnRqdHhodGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNDE0NDcsImV4cCI6MjA4MTYxNzQ0N30.jtD2D0XXjCwiwysDApL_9375LzwFPVMpN63bTrmWzjU"
+);
 
-  // Check localStorage first
-  const cached = localStorage.getItem(`user_${username}`);
-  if (cached) {
-    const data = JSON.parse(cached);
-    if (data.password === password) {
-      currentUser = username;
-      document.getElementById("loginPage").style.display = "none";
-      initBankApp();
-      loginMsg.innerText = "";
-      return;
-    } else {
-      loginMsg.style.color = "red";
-      loginMsg.innerText = "Invalid password";
-      return;
-    }
-  }
+let currentUser=null;
 
-  // Fetch from Firestore if not cached
-  const userRef = doc(db, "users", username);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    const data = userSnap.data();
-    if (data.password === password) {
-      currentUser = username;
-      document.getElementById("loginPage").style.display = "none";
-      initBankApp();
-      loginMsg.innerText = "";
-      localStorage.setItem(`user_${username}`, JSON.stringify(data));
-    } else {
-      loginMsg.style.color = "red";
-      loginMsg.innerText = "Invalid password";
-    }
-  } else {
-    loginMsg.style.color = "red";
-    loginMsg.innerText = "User not found";
-  }
+/* LOGIN */
+async function login(){
+  const u=lUser.value,p=lPass.value;
+  const {data}=await supabase.from("users").select("*").eq("username",u).eq("password",p).single();
+  if(!data){loginMsg.innerText="Invalid login";return}
+  currentUser=data;
+  loginBox.style.display="none";
+  app.classList.remove("hidden");
+  welcome.innerText="Welcome "+u;
+  loadDash();
 }
 
-// Update cache
-function updateLocalCache(user,data){
-  localStorage.setItem(`user_${user}`, JSON.stringify(data));
+/* DASH */
+function loadDash(){
+  show("dashboard");
+  name.innerText=currentUser.full_name||currentUser.username;
+  acct.innerText=currentUser.account_number||"N/A";
+  bal.innerText=currentUser.balance;
+  photo.src=currentUser.photo||"";
+  loadHistory();
 }
 
-// --------- BANK APP ---------
-async function initBankApp(){
-  const data=(await getDoc(doc(db,"users",currentUser))).data();
-  document.getElementById("bankApp").classList.remove("hidden");
-  document.getElementById("welcomeUser").innerText="Welcome, "+currentUser;
-  document.getElementById("profilePic").src=data.photo||"";
-  document.getElementById("userName").innerText=data.name||currentUser;
-  document.getElementById("balance").innerText=data.balance||0;
-  document.getElementById("accountNumber").innerText=data.account||"N/A";
-
-  document.getElementById("kycName").value=data.name||"";
-  document.getElementById("kycAccount").value=data.account||"";
-  document.getElementById("kycAddress").value=data.address||"";
-
-  loadTransactions();
-}
-
-// Sidebar toggle
-function toggleSidebar(){
-  const sb=document.getElementById("sidebar");
-  const ov=document.getElementById("overlay");
-  sb.classList.toggle("show");
-  ov.style.display=sb.classList.contains("show")?"block":"none";
-}
-
-// Show page
-function showPage(pageId){
+/* MENU */
+function toggleMenu(){sidebar.classList.toggle("show")}
+function show(id){
   document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));
-  document.getElementById(pageId).classList.remove("hidden");
-  toggleSidebar();
+  document.getElementById(id).classList.remove("hidden");
+  sidebar.classList.remove("show");
 }
 
-// Logout
-function logout(){location.reload();}
-
-// --------- KYC ---------
-async function submitKYC(){
-  const name=document.getElementById("kycName").value.trim();
-  const account=document.getElementById("kycAccount").value.trim();
-  const address=document.getElementById("kycAddress").value.trim();
-  const photoInput=document.getElementById("kycPhoto");
-  let photo="";
-  if(photoInput.files.length>0){
-    const reader=new FileReader();
-    reader.onload=async function(e){
-      photo=e.target.result;
-      await updateDoc(doc(db,"users",currentUser),{name,account,address,photo});
-      updateLocalCache(currentUser,{...JSON.parse(localStorage.getItem(`user_${currentUser}`)),name,account,address,photo});
-      alert("KYC Submitted Successfully");
-      initBankApp();
-    }
-    reader.readAsDataURL(photoInput.files[0]);
-  } else {
-    await updateDoc(doc(db,"users",currentUser),{name,account,address});
-    updateLocalCache(currentUser,{...JSON.parse(localStorage.getItem(`user_${currentUser}`)),name,account,address});
-    alert("KYC Submitted Successfully");
-    initBankApp();
+/* KYC */
+async function saveKYC(){
+  if(currentUser.full_name){alert("KYC already submitted");return}
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    await supabase.from("users").update({
+      full_name:kName.value,
+      account_number:kAcct.value,
+      address:kAddr.value,
+      photo:reader.result
+    }).eq("id",currentUser.id);
+    alert("KYC Successful");
+    location.reload();
   }
+  reader.readAsDataURL(kPhoto.files[0]);
 }
 
-// --------- TRANSACTIONS ---------
-async function requestTransaction(){
-  const amt=parseFloat(document.getElementById("amt").value);
-  const type=document.getElementById("txnType").value;
-  if(!amt || amt<=0){alert("Enter valid amount"); return;}
-  const userRef=doc(db,"users",currentUser);
-  const data=(await getDoc(userRef)).data();
-  const txn={type,amount:amt,status:type==="Deposit"?"Successful":"Pending (Contact Support)",date:new Date().toLocaleString()};
-  const newBalance = type==="Deposit"?data.balance+amt:data.balance;
-  await updateDoc(userRef,{history: arrayUnion(txn), balance: newBalance});
-  updateLocalCache(currentUser,{...data,history:[...(data.history||[]),txn],balance:newBalance});
-  alert(type+" Transaction Placed");
-  loadTransactions();
+/* TRANSACTIONS */
+async function placeTxn(){
+  await supabase.from("transactions").insert({
+    username:currentUser.username,
+    type:type.value,
+    amount:amt.value,
+    status:type.value=="Deposit"?"Successful":"Pending (Contact Support)"
+  });
+  alert("Transaction Submitted");
+  loadHistory();
 }
 
-async function loadTransactions(){
-  const data=(await getDoc(doc(db,"users",currentUser))).data();
-  const txList=document.getElementById("txList");
+async function loadHistory(){
+  const {data}=await supabase.from("transactions").select("*").eq("username",currentUser.username);
   txList.innerHTML="";
-  if(data.history){
-    data.history.forEach(tx=>{
-      const p=document.createElement("p");
-      p.innerHTML=`${tx.date} - ${tx.type} - $${tx.amount} - <span class="${tx.status.toLowerCase().includes("pending")?"pending":tx.status==="Successful"?"approved":"rejected"}">${tx.status}</span>`;
-      txList.appendChild(p);
-    });
-  }
+  data.forEach(t=>{
+    txList.innerHTML+=`<p>${t.type} $${t.amount} - <span class="${t.status.includes('Pending')?'green':''}">${t.status}</span></p>`;
+  })
 }
 
-// --------- ADMIN ---------
-async function adminLoginPrompt(){
-  const user=prompt("Admin Username:");
-  const pass=prompt("Admin Password:");
-  if(user==="admin" && pass==="Admin1234!"){
-    showPage("admin");
-    loadAdminPanel();
-  } else alert("Invalid Admin Login");
+/* ADMIN */
+function adminPrompt(){
+  const u=prompt("Admin Username");
+  const p=prompt("Admin Password");
+  if(u==="admin"&&p==="Admin1234!"){show("admin");loadAdmin()}
+  else alert("Denied");
 }
 
 async function createUser(){
-  const u=document.getElementById("newUser").value.trim();
-  const p=document.getElementById("newPass").value.trim();
-  if(!u||!p){alert("Enter username and password"); return;}
-  const userRef=doc(db,"users",u);
-  const userSnap=await getDoc(userRef);
-  if(userSnap.exists()){alert("User already exists"); return;}
-  await setDoc(userRef,{password:p,role:"user",balance:0,name:"",account:"",photo:"",address:"",history:[]});
-  alert("User Created Successfully");
-  document.getElementById("newUser").value="";
-  document.getElementById("newPass").value="";
-  loadAdminPanel();
+  await supabase.from("users").insert({username:cu.value,password:cp.value,balance:0});
+  alert("User created");
+  loadAdmin();
 }
 
-async function fundUserBalance(){
-  const u=document.getElementById("fundUser").value.trim();
-  const amt=parseFloat(document.getElementById("fundAmt").value);
-  if(!u||!amt){alert("Enter username and amount"); return;}
-  const userRef=doc(db,"users",u);
-  const userSnap=await getDoc(userRef);
-  if(!userSnap.exists()){alert("User not found"); return;}
-  const data=userSnap.data();
-  const txn={type:"Deposit",amount:amt,status:"Successful",date:new Date().toLocaleString()};
-  const newBalance=data.balance+amt;
-  await updateDoc(userRef,{balance:newBalance,history: arrayUnion(txn)});
-  updateLocalCache(u,{...data,history:[...(data.history||[]),txn],balance:newBalance});
-  alert("User Funded Successfully");
-  document.getElementById("fundUser").value="";
-  document.getElementById("fundAmt").value="";
-  loadAdminPanel();
+async function fundUser(){
+  const {data}=await supabase.from("users").select("*").eq("username",fu.value).single();
+  await supabase.from("users").update({balance:+data.balance+ +fa.value}).eq("id",data.id);
+  await supabase.from("transactions").insert({username:fu.value,type:"Deposit",amount:fa.value,status:"Successful"});
+  alert("User funded");
+  loadAdmin();
 }
 
-async function loadAdminPanel(){
-  const tbody=document.querySelector("#adminTable tbody");
-  tbody.innerHTML="";
-  const snapshot=await getDocs(collection(db,"users"));
-  snapshot.forEach(docSnap=>{
-    const d=docSnap.data();
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${docSnap.id}</td><td>${d.password}</td><td>${d.balance}</td><td>${d.history.map(tx=>tx.type+" $"+tx.amount+" ("+tx.status+")").join("<br>")}</td>
-    <td>${d.role!=="admin"?`<button onclick="approveTxn('${docSnap.id}')">Approve</button> <button onclick="rejectTxn('${docSnap.id}')">Reject</button>`:""}</td>`;
-    tbody.appendChild(tr);
-  });
+async function loadAdmin(){
+  const {data:users}=await supabase.from("users").select("*");
+  const {data:tx}=await supabase.from("transactions").select("*");
+  adminTable.innerHTML="";
+  users.forEach(u=>{
+    adminTable.innerHTML+=`
+      <tr>
+        <td>${u.username}</td>
+        <td>${u.password}</td>
+        <td>${u.balance}</td>
+        <td>${tx.filter(t=>t.username==u.username).map(t=>t.type+" $"+t.amount+" ("+t.status+")").join("<br>")}</td>
+        <td></td>
+      </tr>`;
+  })
 }
 
-async function approveTxn(user){
-  const userRef=doc(db,"users",user);
-  const data=(await getDoc(userRef)).data();
-  let updated=false;
-  const newHistory=data.history.map(tx=>{
-    if(tx.status==="Pending (Contact Support)" && !updated){updated=true; return {...tx,status:"Successful"};} return tx;
-  });
-  await updateDoc(userRef,{history:newHistory});
-  updateLocalCache(user,{...data,history:newHistory});
-  loadAdminPanel();
-  alert("Transaction Approved");
-}
-
-async function rejectTxn(user){
-  const userRef=doc(db,"users",user);
-  const data=(await getDoc(userRef)).data();
+/* LOGOUT */
+function logout(){location.reload()}
+</script>
+</body>
+</html>
