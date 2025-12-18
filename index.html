@@ -3,98 +3,150 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N26 Bank</title>
+<title>N26 Mobile Banking 🏦</title>
 
-<!-- Supabase -->
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#f4f6fb}
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:#f2f4f8}
 .hidden{display:none}
-input,button{width:100%;padding:10px;margin:5px 0;border-radius:6px;border:1px solid #ccc}
-button{background:#0033cc;color:#fff;border:none}
-button:hover{opacity:.9}
-.card{background:#fff;padding:15px;margin:10px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,.1)}
-.menu{position:fixed;left:-220px;top:0;width:220px;height:100%;background:#0033cc;color:#fff;padding:20px;transition:.3s}
-.menu a{color:#fff;display:block;margin:15px 0;text-decoration:none}
-.menu.show{left:0}
-.top{background:#0033cc;color:#fff;padding:15px}
-.green{color:green}
-.red{color:red}
+
+/* LOGIN */
+#loginBox{
+  max-width:360px;margin:120px auto;background:#fff;padding:30px;
+  border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.1);
+}
+input,button{
+  width:100%;padding:12px;margin:10px 0;border-radius:10px;border:1px solid #ccc;
+}
+button{background:#0052cc;color:#fff;font-weight:bold;border:none}
+button:hover{background:#003d99}
+
+/* HEADER */
+header{
+  background:#0052cc;color:#fff;padding:15px;display:flex;justify-content:space-between;align-items:center;
+}
+header span{font-size:22px;cursor:pointer}
+
+/* SIDEBAR */
+#sidebar{
+  position:fixed;top:0;left:-240px;width:240px;height:100%;background:#002d72;color:#fff;padding:20px;transition:.3s;
+}
+#sidebar a{
+  display:block;padding:14px;margin-bottom:10px;background:rgba(255,255,255,.1);
+  color:#fff;border-radius:10px;text-decoration:none;
+}
+#sidebar.show{left:0}
+
+/* PAGES */
+.page{padding:20px}
+.card{
+  background:#fff;padding:20px;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,.08);
+  margin-bottom:20px;
+}
 table{width:100%;border-collapse:collapse}
-td,th{border:1px solid #ccc;padding:6px;font-size:12px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#0052cc;color:#fff}
+.green{color:green;font-weight:bold}
+.orange{color:orange;font-weight:bold}
+.red{color:red;font-weight:bold}
+img{width:100px;height:100px;border-radius:50%;object-fit:cover}
 </style>
 </head>
-
 <body>
 
-<!-- MENU -->
-<div id="menu" class="menu">
-  <a onclick="showDash()">Dashboard</a>
-  <a onclick="showHistory()">History</a>
-  <a onclick="showKYC()">KYC</a>
+<!-- LOGIN -->
+<div id="loginBox">
+  <h2 style="text-align:center">🔐 Login</h2>
+  <input id="lUser" placeholder="Username">
+  <input id="lPass" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="loginMsg" style="color:red;text-align:center"></p>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<header>
+  <span onclick="toggleMenu()">☰</span>
+  <b id="welcome"></b>
+</header>
+
+<div id="sidebar">
+  <a onclick="show('dashboard')">Dashboard</a>
+  <a onclick="show('kyc')">KYC</a>
+  <a onclick="show('history')">History</a>
+  <a onclick="adminPrompt()">Admin Panel</a>
   <a onclick="logout()">Logout</a>
 </div>
 
-<!-- LOGIN -->
-<div id="loginPage" class="card">
-  <h3>Login</h3>
-  <input id="username" placeholder="Username">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="loginUser()">Login</button>
+<!-- DASHBOARD -->
+<div id="dashboard" class="page hidden">
+  <div class="card" style="text-align:center">
+    <img id="photo">
+    <h3 id="name"></h3>
+    <p>Account: <span id="acct"></span></p>
+    <h2>$<span id="bal"></span></h2>
+  </div>
+
+  <div class="card">
+    <input id="amt" type="number" placeholder="Amount">
+    <select id="type">
+      <option>Deposit</option>
+      <option>Withdrawal</option>
+    </select>
+    <button onclick="placeTxn()">Submit</button>
+  </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
-  <div class="top">
-    ☰ <span onclick="toggleMenu()">Menu</span>
-  </div>
+<!-- KYC -->
+<div id="kyc" class="page hidden">
   <div class="card">
-    <h3 id="welcome"></h3>
-    <p>Balance: $<span id="balance">0</span></p>
-    <button onclick="placeTx('Withdrawal')">Withdraw</button>
-    <button onclick="placeTx('Transfer')">Transfer</button>
+    <input id="kName" placeholder="Full Name">
+    <input id="kAddr" placeholder="Withdrawal Address">
+    <input type="file" id="kPhoto">
+    <button onclick="saveKYC()">Submit KYC</button>
   </div>
 </div>
 
 <!-- HISTORY -->
-<div id="history" class="hidden card">
-  <h3>Transaction History</h3>
-  <div id="historyList"></div>
-</div>
-
-<!-- KYC -->
-<div id="kyc" class="hidden card">
-  <h3>KYC (One Time)</h3>
-  <input id="fullName" placeholder="Full Name">
-  <input id="accountNo" placeholder="Account Number">
-  <input id="withdrawAddr" placeholder="Withdraw Address">
-  <button onclick="submitKYC()">Submit KYC</button>
+<div id="history" class="page hidden">
+  <div class="card">
+    <div id="txList"></div>
+  </div>
 </div>
 
 <!-- ADMIN -->
-<div id="adminPanel" class="hidden card">
-  <h3>Admin Panel</h3>
+<div id="admin" class="page hidden">
+  <div class="card">
+    <h3>Create User</h3>
+    <input id="cu" placeholder="Username">
+    <input id="cp" placeholder="Password">
+    <button onclick="createUser()">Create</button>
+  </div>
 
-  <h4>Create User</h4>
-  <input id="newUser" placeholder="Username">
-  <input id="newPass" placeholder="Password">
-  <button onclick="createUser()">Create User</button>
+  <div class="card">
+    <h3>Fund User</h3>
+    <input id="fu" placeholder="Username">
+    <input id="fa" type="number" placeholder="Amount">
+    <button onclick="fundUser()">Fund</button>
+  </div>
 
-  <h4>Fund User</h4>
-  <input id="fundUser" placeholder="Username">
-  <input id="fundAmount" placeholder="Amount">
-  <button onclick="fundUser()">Fund</button>
+  <div class="card">
+    <h3>All Users & Transactions</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>User</th><th>Password</th><th>Balance</th><th>Transactions</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="adminTable"></tbody>
+    </table>
+  </div>
+</div>
 
-  <h4>Users & Transactions</h4>
-  <table>
-    <thead>
-      <tr>
-        <th>User</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="adminTx"></tbody>
-  </table>
 </div>
 
 <script>
@@ -104,115 +156,150 @@ const supabase = supabase.createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12Z3dya3BxYXV6bnRqdHhodGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNDE0NDcsImV4cCI6MjA4MTYxNzQ0N30.jtD2D0XXjCwiwysDApL_9375LzwFPVMpN63bTrmWzjU"
 );
 
-/* HASH */
-async function hash(p){
-  const d=new TextEncoder().encode(p);
-  const h=await crypto.subtle.digest("SHA-256",d);
-  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
+let currentUser=null;
 
 /* LOGIN */
-async function loginUser(){
-  const u=username.value,p=password.value;
-  const h=await hash(p);
-  const {data}=await supabase.from("users").select("*")
-  .eq("username",u).eq("password",h).single();
-  if(!data)return alert("Invalid");
-  localStorage.user=JSON.stringify(data);
-  data.role==="admin"?showAdmin():showDash();
+async function login(){
+  const u=lUser.value,p=lPass.value;
+  const {data}=await supabase.from("users").select("*").eq("username",u).eq("password",p).single();
+  if(!data){loginMsg.innerText="Invalid login";return}
+  currentUser=data;
+  loginBox.style.display="none";
+  app.classList.remove("hidden");
+  welcome.innerText="Welcome "+u;
+  loadDash();
 }
 
-/* NAV */
-function toggleMenu(){menu.classList.toggle("show")}
-function hideAll(){dashboard.classList.add("hidden");history.classList.add("hidden");kyc.classList.add("hidden");adminPanel.classList.add("hidden")}
-function showDash(){
-  hideAll();dashboard.classList.remove("hidden");
-  const u=JSON.parse(localStorage.user);
-  welcome.innerText="Welcome "+u.username;
-  balance.innerText=u.balance;
+/* DASHBOARD */
+function loadDash(){
+  show("dashboard");
+  name.innerText=currentUser.full_name||currentUser.username;
+  acct.innerText=currentUser.account_number||currentUser.username+"-"+Math.floor(Math.random()*9000+1000);
+  bal.innerText=currentUser.balance;
+  photo.src=currentUser.photo||"";
+  loadHistory();
 }
-function showHistory(){hideAll();history.classList.remove("hidden");loadHistory()}
-function showKYC(){hideAll();kyc.classList.remove("hidden")}
-function showAdmin(){loginPage.classList.add("hidden");adminPanel.classList.remove("hidden");loadAdmin()}
-function logout(){localStorage.clear();location.reload()}
+
+/* MENU */
+function toggleMenu(){sidebar.classList.toggle("show")}
+function show(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  sidebar.classList.remove("show");
+}
 
 /* KYC */
-async function submitKYC(){
-  const u=JSON.parse(localStorage.user);
-  const {error}=await supabase.from("kyc").insert({
-    user_id:u.id,full_name:fullName.value,
-    account_number:accountNo.value,withdraw_address:withdrawAddr.value
-  });
-  alert(error?"Already submitted":"KYC Submitted");
+async function saveKYC(){
+  if(currentUser.full_name){alert("KYC already submitted");return}
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const acct = currentUser.account_number || currentUser.username+"-"+Math.floor(Math.random()*9000+1000);
+    await supabase.from("users").update({
+      full_name:kName.value,
+      account_number:acct,
+      address:kAddr.value,
+      photo:reader.result
+    }).eq("id",currentUser.id);
+    alert("KYC Successful");
+    location.reload();
+  }
+  reader.readAsDataURL(kPhoto.files[0]);
 }
 
 /* TRANSACTIONS */
-async function placeTx(type){
-  const u=JSON.parse(localStorage.user);
+async function placeTxn(){
+  if(!amt.value){alert("Enter amount"); return;}
   await supabase.from("transactions").insert({
-    user_id:u.id,type,amount:100,status:"Pending (Contact Support)"
+    username:currentUser.username,
+    type:type.value,
+    amount:amt.value,
+    status:type.value=="Deposit"?"Successful":"Pending (Contact Support)"
   });
   alert("Transaction Submitted");
+  loadHistory();
 }
 
-/* HISTORY */
 async function loadHistory(){
-  const u=JSON.parse(localStorage.user);
-  const {data}=await supabase.from("transactions").select("*").eq("user_id",u.id);
-  historyList.innerHTML="";
+  const {data}=await supabase.from("transactions").select("*").eq("username",currentUser.username);
+  txList.innerHTML="";
   data.forEach(t=>{
-    historyList.innerHTML+=`<p>${t.type} $${t.amount} 
-    <span class="${t.status.includes('Pending')?'green':t.status==='Rejected'?'red':'green'}">
-    ${t.status}</span></p>`;
-  });
+    const cls=t.status.includes("Pending")?"green":t.status.includes("Successful")?"green":"red";
+    txList.innerHTML+=`<p>${t.type} $${t.amount} - <span class="${cls}">${t.status}</span></p>`;
+  })
 }
 
 /* ADMIN */
+function adminPrompt(){
+  const u=prompt("Admin Username");
+  const p=prompt("Admin Password");
+  if(u==="admin"&&p==="Admin1234!"){show("admin");loadAdmin()}
+  else alert("Denied");
+}
+
 async function createUser(){
-  const h=await hash(newPass.value);
-  const {error}=await supabase.from("users").insert({username:newUser.value,password:h});
-  alert(error?"Failed":"User Created");
+  if(!cu.value || !cp.value){alert("Enter username & password"); return;}
+  const acct = cu.value+"-"+Math.floor(Math.random()*9000+1000);
+  await supabase.from("users").insert({username:cu.value,password:cp.value,balance:0,account_number:acct});
+  alert("User created successfully");
+  cu.value=""; cp.value="";
+  loadAdmin();
 }
 
 async function fundUser(){
-  const {data}=await supabase.from("users").select("*").eq("username",fundUser.value).single();
-  await supabase.from("users").update({balance:fundAmount.value}).eq("id",data.id);
-  await supabase.from("transactions").insert({
-    user_id:data.id,type:"Deposit",amount:fundAmount.value,status:"Successful"
-  });
-  alert("Funded Successfully");
+  if(!fu.value || !fa.value){alert("Enter username & amount"); return;}
+  const {data}=await supabase.from("users").select("*").eq("username",fu.value).single();
+  if(!data){alert("User not found"); return;}
+  await supabase.from("users").update({balance:+data.balance+ +fa.value}).eq("id",data.id);
+  await supabase.from("transactions").insert({username:fu.value,type:"Deposit",amount:fa.value,status:"Successful"});
+  alert("User funded successfully");
+  fu.value=""; fa.value="";
+  loadAdmin();
 }
 
 async function loadAdmin(){
-  const {data}=await supabase.from("transactions").select("*,users(username)");
-  adminTx.innerHTML="";
-  data.forEach(t=>{
-    adminTx.innerHTML+=`
-    <tr>
-      <td>${t.users.username}</td>
-      <td>${t.type}</td>
-      <td>$${t.amount}</td>
-      <td class="${t.status.includes('Pending')?'green':t.status==='Rejected'?'red':'green'}">${t.status}</td>
-      <td>
-        ${t.status.includes("Pending")?
-        `<button onclick="approve('${t.id}','${t.user_id}',${t.amount})">✔</button>
-         <button onclick="reject('${t.id}')">✖</button>`:""}
-      </td>
-    </tr>`;
-  });
+  const {data:users}=await supabase.from("users").select("*");
+  const {data:tx}=await supabase.from("transactions").select("*");
+  adminTable.innerHTML="";
+  users.forEach(u=>{
+    const userTx=tx.filter(t=>t.username==u.username);
+    const txHtml = userTx.map((t,i)=>`
+      ${t.type} $${t.amount} (<span class="${t.status.includes('Pending')?'green':t.status.includes('Successful')?'green':'red'}">${t.status}</span>) 
+      ${t.status.includes("Pending")?`<button onclick="approveTxn(${i},'${u.username}')">✔</button> <button onclick="rejectTxn(${i},'${u.username}')">✖</button>`:""}
+    `).join("<br>");
+    adminTable.innerHTML+=`
+      <tr>
+        <td>${u.username}</td>
+        <td>******</td>
+        <td>${u.balance}</td>
+        <td>${txHtml}</td>
+        <td></td>
+      </tr>`;
+  })
 }
 
-async function approve(id,uid,amt){
-  await supabase.from("transactions").update({status:"Successful"}).eq("id",id);
-  const {data}=await supabase.from("users").select("balance").eq("id",uid).single();
-  await supabase.from("users").update({balance:data.balance-amt}).eq("id",uid);
+/* APPROVE/REJECT TRANSACTION */
+async function approveTxn(index,username){
+  const {data:tx}=await supabase.from("transactions").select("*").eq("username",username);
+  const t = tx[index];
+  await supabase.from("transactions").update({status:"Successful"}).eq("id",t.id);
+  if(t.type=="Withdrawal") {
+    const {data:user}=await supabase.from("users").select("*").eq("username",username).single();
+    await supabase.from("users").update({balance:user.balance - +t.amount}).eq("id",user.id);
+  }
   loadAdmin();
+  if(currentUser.username==username) loadHistory();
 }
 
-async function reject(id){
-  await supabase.from("transactions").update({status:"Rejected"}).eq("id",id);
+async function rejectTxn(index,username){
+  const {data:tx}=await supabase.from("transactions").select("*").eq("username",username);
+  const t = tx[index];
+  await supabase.from("transactions").update({status:"Rejected"}).eq("id",t.id);
   loadAdmin();
+  if(currentUser.username==username) loadHistory();
 }
+
+/* LOGOUT */
+function logout(){location.reload()}
 </script>
 </body>
 </html>
