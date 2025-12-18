@@ -1,19 +1,255 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Bank Login</title>
-<link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N26 Bank</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
+body{background:#f1f5f9;color:#0f172a}
+.hidden{display:none}
+
+/* LOGIN */
+#login{
+  max-width:360px;
+  margin:90px auto;
+  background:#fff;
+  padding:25px;
+  border-radius:16px;
+  box-shadow:0 15px 40px rgba(0,0,0,.1)
+}
+input,button,select{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid #cbd5e1
+}
+button{background:#020617;color:#fff;font-weight:600}
+
+/* HEADER */
+#header{
+  display:flex;
+  align-items:center;
+  background:#020617;
+  color:#fff;
+  padding:15px
+}
+#menuBtn{font-size:22px;margin-right:12px}
+
+/* SIDEBAR */
+#sidebar{
+  position:fixed;
+  top:0;left:-260px;
+  width:260px;height:100%;
+  background:#020617;
+  padding:25px;
+  transition:.3s;
+  z-index:10
+}
+#sidebar a{
+  display:block;
+  color:#cbd5e1;
+  padding:12px 0;
+  text-decoration:none
+}
+
+/* PAGES */
+.page{padding:15px}
+.card{
+  background:#fff;
+  padding:18px;
+  border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.08);
+  margin-bottom:15px
+}
+.profile{width:90px;border-radius:50%;margin:10px 0}
+.tx{font-size:14px;padding:6px;border-bottom:1px solid #e5e7eb}
+</style>
 </head>
+
 <body>
 
-<h2>Secure Banking Login</h2>
+<!-- SIDEBAR -->
+<div id="sidebar" class="hidden">
+  <h3 style="color:#fff">N26 Bank</h3>
+  <a onclick="openPage('dashboard')">Dashboard</a>
+  <a onclick="openPage('transactions')">Transactions</a>
+  <a onclick="openPage('kyc')">KYC</a>
+  <a id="adminMenu" class="hidden" onclick="openPage('admin')">Admin</a>
+  <a onclick="logout()">Logout</a>
+</div>
 
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
+<!-- HEADER -->
+<div id="header" class="hidden">
+  <span id="menuBtn" onclick="toggle()">☰</span>
+  <b>N26 Digital Bank</b>
+</div>
 
-<p id="msg"></p>
+<!-- LOGIN -->
+<div id="login">
+  <h3>Secure Login</h3>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="msg"></p>
+</div>
 
-<script type="module" src="js/auth.js"></script>
+<!-- DASHBOARD -->
+<div id="dashboard" class="page hidden">
+  <div class="card">
+    <img id="photo" class="profile hidden">
+    <p><b>Name:</b> <span id="name"></span></p>
+    <p><b>Balance:</b> $<span id="bal"></span></p>
+    <p><b>KYC Status:</b> <span id="kycStatus"></span></p>
+  </div>
+
+  <div class="card">
+    <h3>New Transaction</h3>
+    <select id="txType">
+      <option>Deposit</option>
+      <option>Transfer</option>
+      <option>Withdraw</option>
+    </select>
+    <input id="amount" placeholder="Amount">
+    <button onclick="createTx()">Submit</button>
+  </div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div id="transactions" class="page hidden">
+  <div class="card">
+    <h3>Transaction History</h3>
+    <div id="txList"></div>
+  </div>
+</div>
+
+<!-- KYC -->
+<div id="kyc" class="page hidden">
+  <div class="card">
+    <h3>KYC Update</h3>
+    <input id="fullname" placeholder="Full Name">
+    <input id="address" placeholder="Address">
+    <input type="file" id="passport">
+    <button onclick="submitKYC()">Submit</button>
+    <p id="kycMsg"></p>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="page hidden">
+  <div class="card">
+    <h3>Admin Panel</h3>
+    <input id="uid" placeholder="User UID">
+    <input id="newBal" placeholder="New Balance">
+    <button onclick="updateBalance()">Update Balance</button>
+    <p id="adminMsg"></p>
+  </div>
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {getFirestore,doc,getDoc,updateDoc,collection,addDoc,getDocs} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+const app=initializeApp({
+  apiKey:"AIzaSyCpGwKbyOW_LQPrTKoNvDjW_oTD9_cxsnc",
+  authDomain:"n26-bank-888bc.firebaseapp.com",
+  projectId:"n26-bank-888bc",
+  storageBucket:"n26-bank-888bc.firebasestorage.app",
+  messagingSenderId:"112126821080",
+  appId:"1:112126821080:web:c108cc61d84a25f5290dad"
+});
+
+const auth=getAuth(app);
+const db=getFirestore(app);
+const storage=getStorage(app);
+const pages=["dashboard","transactions","kyc","admin"];
+
+window.toggle=()=>sidebar.style.left="0";
+window.close=()=>sidebar.style.left="-260px";
+
+window.openPage=(p)=>{
+  if(!auth.currentUser){logout();return}
+  pages.forEach(x=>document.getElementById(x).classList.add("hidden"));
+  document.getElementById(p).classList.remove("hidden");
+  close();
+};
+
+window.login=async()=>{
+  try{await signInWithEmailAndPassword(auth,email.value,password.value)}
+  catch(e){msg.innerText=e.message}
+};
+
+window.logout=async()=>{await signOut(auth);location.reload()};
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    login.classList.remove("hidden");
+    header.classList.add("hidden");
+    sidebar.classList.add("hidden");
+    pages.forEach(p=>document.getElementById(p).classList.add("hidden"));
+    return;
+  }
+
+  login.classList.add("hidden");
+  header.classList.remove("hidden");
+  sidebar.classList.remove("hidden");
+
+  const snap=await getDoc(doc(db,"users",user.uid));
+  const d=snap.data();
+
+  name.innerText=d.fullName||"User";
+  bal.innerText=d.balance||0;
+  kycStatus.innerText=d.kycStatus||"Not Updated";
+
+  if(d.photo){photo.src=d.photo;photo.classList.remove("hidden")}
+
+  if(d.role==="admin") adminMenu.classList.remove("hidden");
+
+  toggle(); setTimeout(close,1500);
+  loadTx(user.uid);
+  openPage("dashboard");
+});
+
+async function loadTx(uid){
+  txList.innerHTML="";
+  const q=await getDocs(collection(db,"transactions"));
+  q.forEach(x=>{
+    const t=x.data();
+    if(t.uid===uid){
+      txList.innerHTML+=`<div class="tx">${t.type} - $${t.amount} (${t.status})</div>`;
+    }
+  });
+}
+
+window.createTx=async()=>{
+  const u=auth.currentUser;
+  await addDoc(collection(db,"transactions"),{
+    uid:u.uid,type:txType.value,amount:Number(amount.value),status:"Pending"
+  });
+  alert("Transaction submitted");
+};
+
+window.submitKYC=async()=>{
+  const u=auth.currentUser;
+  const f=passport.files[0];
+  const r=ref(storage,"passports/"+u.uid);
+  await uploadBytes(r,f);
+  const url=await getDownloadURL(r);
+  await updateDoc(doc(db,"users",u.uid),{
+    fullName:fullname.value,address:address.value,photo:url,kycStatus:"Pending"
+  });
+  kycMsg.innerText="KYC Submitted";
+};
+
+window.updateBalance=async()=>{
+  await updateDoc(doc(db,"users",uid.value),{balance:Number(newBal.value)});
+  adminMsg.innerText="Balance Updated";
+};
+</script>
 </body>
 </html>
